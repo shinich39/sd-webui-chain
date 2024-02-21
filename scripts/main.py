@@ -688,11 +688,11 @@ def on_after_component(component, **kwargs):
               # 0
               with gr.TabItem("Scale by") as upscale_scale_by:
                 upscale_scale = gr.Slider(
-                  minimum=1.0,
+                  minimum=0.0,
                   maximum=8.0,
                   step=0.05,
-                  label="Resize",
-                  value=4,
+                  label="Resize ", # blank for fix float
+                  value=4.0,
                 )
               # 1
               with gr.TabItem("Scale to") as upscale_scale_to:
