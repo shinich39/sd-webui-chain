@@ -107,11 +107,13 @@ def click_add_batch_button(batch_id, *args):
     payload["seed_resize_from_w"] = req["seed_resize_from_w"]
     payload["seed_resize_from_h"] = req["seed_resize_from_h"]
 
-  if req["resize_tab"] == 0:
+  payload["to_scale"] = req["resize_tab"] == 1
+
+  if payload["to_scale"]:
+    payload["scale_by"] = req["resize_scale"] # by
+  else:
     payload["width"] = req["resize_width"] # to
     payload["height"] = req["resize_height"] # to
-  else:
-    payload["scale"] = req["resize_scale"] # by
 
   payload["resize_mode"] = req["resize_mode"]
   payload["cfg_scale"] = req["cfg_scale"]
@@ -503,134 +505,140 @@ def click_generate_btn(queue):
 
   print(f"Queue: {queue}")
 
-  for batch_id in queue:
-    if not in_progress:
-      print(f"Process interrupted.")
-      result += f"Process interrupted.\n"
-      return [
-        gr.Button.update(
-          visible=True
-        ),
-        gr.Button.update(
-          visible=False
-        ),
-        gr.TextArea.update(
-          label="Result",
-          value=result
-        )
-      ]
+  try:
 
-    batch = next((x for x in batches if x["id"] == batch_id), None)
-    if not batch:
-      print(f"Batch {batch_id} not found.")
-      result += f"Batch {batch_id} not found.\n"
-      continue
-    
-    print(f"Batch: {batch_id}")
 
-    input_dir = batch["input_dir"]
-    output_dir = batch["output_dir"]
-    img2img_payload = batch["payload"]
-    upscale_payload = batch["upscale_payload"]
-    
-    for filename in os.listdir(input_dir):
-      basename = os.path.splitext(filename)[0]
-      extension = os.path.splitext(filename)[1]
-      payload = img2img_payload.copy()
-      payload["init_images"] = []
+    for batch_id in queue:
+      if not in_progress:
+        print(f"Process interrupted.")
+        result += f"Process interrupted.\n"
+        return [
+          gr.Button.update(
+            visible=True
+          ),
+          gr.Button.update(
+            visible=False
+          ),
+          gr.TextArea.update(
+            label="Result",
+            value=result
+          )
+        ]
 
-      if not extension.lower() in exts:
+      batch = next((x for x in batches if x["id"] == batch_id), None)
+      if not batch:
+        print(f"Batch {batch_id} not found.")
+        result += f"Batch {batch_id} not found.\n"
         continue
       
-      input_path = os.path.join(input_dir, filename)
+      print(f"Batch: {batch_id}")
 
-      if not payload["scale"] == None:
-        intput_width, input_height = Image.open(input_path).size
-        payload["width"] = intput_width * payload["scale"]
-        payload["height"] = input_height * payload["scale"]
-
-      with open(input_path, 'rb') as input_file:
-        input_data = input_file.read()
-        input_base64 = base64.b64encode(input_data).decode('utf-8')
-        payload["init_images"].append(input_base64) # push 
-
-      print(f"Processing: {input_path}")
-      # result += f"Processing: {input_path}\n"
+      input_dir = batch["input_dir"]
+      output_dir = batch["output_dir"]
+      img2img_payload = batch["payload"]
+      upscale_payload = batch["upscale_payload"]
       
-      response = requests.post("http://127.0.0.1:7860/sdapi/v1/img2img", json=payload)
-      res = response.json()
+      for filename in os.listdir(input_dir):
+        basename = os.path.splitext(filename)[0]
+        extension = os.path.splitext(filename)[1]
+        payload = img2img_payload.copy()
+        payload["init_images"] = []
 
-      if not response.status_code == 200:
-        print(f"Generate-Error: {input_path}")
-        result += f"Generate-Error: {input_path}\n"
-        print(res)
-        continue
-
-      print(f"Generated: {input_path}")
-      # result += f"Generated: {input_path}\n"
-
-      # post-process upscale
-      if not upscale_payload == None:
-        u_payload = upscale_payload.copy()
-        u_payload["imageList"] = []
+        if not extension.lower() in exts:
+          continue
         
-        for index, image in enumerate(res['images']):
-          u_payload["imageList"].append({
-            "data": image,
-            "name": f"{basename}_{str(index).zfill(4)}.png"
-          })
+        input_path = os.path.join(input_dir, filename)
 
-        upscale_response = requests.post("http://127.0.0.1:7860/sdapi/v1/extra-batch-images", json=u_payload)
-        upscale_res = upscale_response.json()
+        if not payload["to_scale"] == None:
+          intput_width, input_height = Image.open(input_path).size
+          payload["width"] = intput_width * payload["scale"]
+          payload["height"] = input_height * payload["scale"]
 
-        if not upscale_response.status_code == 200:
-          print(f"Upscale-Error: {input_path}")
-          result += f"Upscale-Error: {input_path}\n"
-          print(upscale_res)
+        with open(input_path, 'rb') as input_file:
+          input_data = input_file.read()
+          input_base64 = base64.b64encode(input_data).decode('utf-8')
+          payload["init_images"].append(input_base64) # push 
+
+        print(f"Processing: {input_path}")
+        # result += f"Processing: {input_path}\n"
+        
+        response = requests.post("http://127.0.0.1:7860/sdapi/v1/img2img", json=payload)
+        res = response.json()
+
+        if not response.status_code == 200:
+          print(f"Generate-Error: {input_path}")
+          result += f"Generate-Error: {input_path}\n"
+          print(res)
           continue
 
-        print(f"Upscaled: {input_path}")
-        # result += f"Upscaled: {input_path}\n"
+        print(f"Generated: {input_path}")
+        # result += f"Generated: {input_path}\n"
 
-        processed_images = upscale_res['images']
-      else:
-        processed_images = res['images']
-        
-      # check dir
-      if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+        # post-process upscale
+        if not upscale_payload == None:
+          u_payload = upscale_payload.copy()
+          u_payload["imageList"] = []
+          
+          for index, image in enumerate(res['images']):
+            u_payload["imageList"].append({
+              "data": image,
+              "name": f"{basename}_{str(index).zfill(4)}.png"
+            })
 
-      # save
-      for index, image in enumerate(processed_images):
-        if not in_progress:
-          print(f"Process interrupted.")
-          result += f"Process interrupted.\n"
-          return [
-            gr.Button.update(
-              visible=True
-            ),
-            gr.Button.update(
-              visible=False
-            ),
-            gr.TextArea.update(
-              label="Result",
-              value=result
-            )
-          ]
-        
-        new_filename = f"{basename}_{str(index).zfill(4)}.png"
-        output_path = os.path.join(output_dir, new_filename)
-        try:
-          output_data = base64.b64decode(image)
-          with open(output_path, 'wb') as output_file:
-            output_file.write(output_data)
-            
-          print(f"Saved: {output_path}")
-          result += f"Saved: {output_path}\n"
-        except Exception as err:
-          print(f"Write-Error: {output_path}")
-          result += f"Write-error: {output_path}\n"
-          print(err)
+          upscale_response = requests.post("http://127.0.0.1:7860/sdapi/v1/extra-batch-images", json=u_payload)
+          upscale_res = upscale_response.json()
+
+          if not upscale_response.status_code == 200:
+            print(f"Upscale-Error: {input_path}")
+            result += f"Upscale-Error: {input_path}\n"
+            print(upscale_res)
+            continue
+
+          print(f"Upscaled: {input_path}")
+          # result += f"Upscaled: {input_path}\n"
+
+          processed_images = upscale_res['images']
+        else:
+          processed_images = res['images']
+          
+        # check dir
+        if not os.path.exists(output_dir):
+          os.makedirs(output_dir)
+
+        # save
+        for index, image in enumerate(processed_images):
+          if not in_progress:
+            print(f"Process interrupted.")
+            result += f"Process interrupted.\n"
+            return [
+              gr.Button.update(
+                visible=True
+              ),
+              gr.Button.update(
+                visible=False
+              ),
+              gr.TextArea.update(
+                label="Result",
+                value=result
+              )
+            ]
+          
+          new_filename = f"{basename}_{str(index).zfill(4)}.png"
+          output_path = os.path.join(output_dir, new_filename)
+          try:
+            output_data = base64.b64decode(image)
+            with open(output_path, 'wb') as output_file:
+              output_file.write(output_data)
+              
+            print(f"Saved: {output_path}")
+            result += f"Saved: {output_path}\n"
+          except Exception as err:
+            print(f"Write-Error: {output_path}")
+            result += f"Write-error: {output_path}\n"
+            print(err)
+  except Exception as err:
+    result += f"Error occurred.\n"
+    print(err)
 
   in_progress = False
 
@@ -683,8 +691,8 @@ def on_after_component(component, **kwargs):
               # 0
               with gr.TabItem("Scale by") as upscale_scale_by:
                 upscale_scale = gr.Slider(
-                  minimum=1,
-                  maximum=8,
+                  minimum=1.0,
+                  maximum=8.0,
                   step=0.05,
                   label="Resize",
                   value=4,
