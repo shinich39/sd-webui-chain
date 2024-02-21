@@ -572,15 +572,16 @@ def click_generate_btn(queue):
 
       # post-process upscale
       if not upscale_payload == None:
-        upscale_payload["imageList"] = []
+        u_payload = upscale_payload.copy()
+        u_payload["imageList"] = []
         
         for index, image in enumerate(res['images']):
-          upscale_payload["imageList"].append({
+          u_payload["imageList"].append({
             "data": image,
             "name": f"{basename}_{str(index).zfill(4)}.png"
           })
 
-        upscale_response = requests.post("http://127.0.0.1:7860/sdapi/v1/extra-batch-images", json=upscale_payload)
+        upscale_response = requests.post("http://127.0.0.1:7860/sdapi/v1/extra-batch-images", json=u_payload)
         upscale_res = upscale_response.json()
 
         if not upscale_response.status_code == 200:
@@ -685,7 +686,7 @@ def on_after_component(component, **kwargs):
                 upscale_scale = gr.Slider(
                   minimum=1,
                   maximum=8,
-                  step=1,
+                  step=0.05,
                   label="Resize",
                   value=4,
                 )
