@@ -289,18 +289,29 @@ def click_add_batch_button(batch_id, *args):
     }
 
   # post-process upscale
-  upscale = None
+  upscale_payload = None
   if "upscale_enable" in req and req["upscale_enable"]:
-    upscale = {
-      "tab": req["upscale_tab"],
-      "scale": req["upscale_scale"],
-      "width": req["upscale_width"],
-      "height": req["upscale_height"],
-      "crop": req["upscale_crop"],
+    upscale_payload = {
+      "resize_mode": 0,
+      "show_extras_results": False,
+      "gfpgan_visibility": 0,
+      "codeformer_visibility": 0,
+      "codeformer_weight": 0,
+      "upscaling_crop": req["upscale_crop"],
       "upscaler_1": req["upscale_upscaler_1"],
       "upscaler_2": req["upscale_upscaler_2"],
-      "upscaler_2_visibility": req["upscale_upscaler_2_visibility"]
+      "extras_upscaler_2_visibility": req["upscale_upscaler_2_visibility"],
+      "upscale_first": False, # upscale before restoring faces
+      # "imageList": [] # [{ "data": "base64", "name": "filename"}]
     }
+
+    if req["upscale_tab"] == 0:
+      # 0: by
+      upscale_payload["upscaling_resize"] = req["upscale_scale"]
+    else:
+      # 1: to
+      upscale_payload["upscaling_resize_w"] = req["upscale_width"]
+      upscale_payload["upscaling_resize_h"] = req["upscale_height"]
 
   input_dir = req["batch_input_dir"]
   if input_dir is None:
@@ -315,7 +326,7 @@ def click_add_batch_button(batch_id, *args):
     "input_dir": input_dir,
     "output_dir": output_dir,
     "payload": payload,
-    "upscale": upscale,
+    "upscale_payload": upscale_payload,
   })
 
   batches = sorted(batches, key=itemgetter("id"))
@@ -518,13 +529,13 @@ def click_generate_btn(queue):
 
     input_dir = batch["input_dir"]
     output_dir = batch["output_dir"]
-    original_payload = batch["payload"]
-    upscale = batch["upscale"]
+    img2img_payload = batch["payload"]
+    upscale_payload = batch["upscale_payload"]
     
     for filename in os.listdir(input_dir):
       basename = os.path.splitext(filename)[0]
       extension = os.path.splitext(filename)[1]
-      payload = original_payload.copy()
+      payload = img2img_payload.copy()
       payload["init_images"] = []
 
       if not extension.lower() in exts:
@@ -559,30 +570,10 @@ def click_generate_btn(queue):
       print(f"Generated: {input_path}")
       # result += f"Generated: {input_path}\n"
 
-      # upscale
-      if not upscale == None:
-        upscale_payload = {
-          "resize_mode": 0,
-          "show_extras_results": False,
-          "gfpgan_visibility": 0,
-          "codeformer_visibility": 0,
-          "codeformer_weight": 0,
-          "upscaling_crop": upscale["crop"],
-          "upscaler_1": upscale["upscaler_1"],
-          "upscaler_2": upscale["upscaler_2"],
-          "extras_upscaler_2_visibility": upscale["upscaler_2_visibility"],
-          "upscale_first": False, # upscale before restoring faces
-          "imageList": []
-        }
-
-        if upscale["tab"] == 0:
-          # 0: by
-          upscale_payload["upscaling_resize"] = upscale["scale"]
-        else:
-          # 1: to
-          upscale_payload["upscaling_resize_w"] = upscale["width"]
-          upscale_payload["upscaling_resize_h"] = upscale["height"]
-
+      # post-process upscale
+      if not upscale_payload == None:
+        upscale_payload["imageList"] = []
+        
         for index, image in enumerate(res['images']):
           upscale_payload["imageList"].append({
             "data": image,
