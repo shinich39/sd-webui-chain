@@ -107,10 +107,11 @@ def click_add_batch_button(batch_id, *args):
     payload["seed_resize_from_w"] = req["seed_resize_from_w"]
     payload["seed_resize_from_h"] = req["seed_resize_from_h"]
 
-  payload["resize_tab"] = req["resize_tab"] # 0, 1 / by, to
-  payload["width"] = req["resize_width"] # to
-  payload["height"] = req["resize_height"] # to
-  payload["resize_scale"] = req["resize_scale"] # by
+  if req["resize_tab"] == 0:
+    payload["width"] = req["resize_width"] # to
+    payload["height"] = req["resize_height"] # to
+  else:
+    payload["scale"] = req["resize_scale"] # by
 
   payload["resize_mode"] = req["resize_mode"]
   payload["cfg_scale"] = req["cfg_scale"]
@@ -543,12 +544,10 @@ def click_generate_btn(queue):
       
       input_path = os.path.join(input_dir, filename)
 
-      if payload["resize_tab"] == 1:
+      if not payload["scale"] == None:
         intput_width, input_height = Image.open(input_path).size
-        image_width = intput_width * payload["resize_scale"]
-        image_height = input_height * payload["resize_scale"]
-        payload["width"] = image_width
-        payload["height"] = image_height
+        payload["width"] = intput_width * payload["scale"]
+        payload["height"] = input_height * payload["scale"]
 
       with open(input_path, 'rb') as input_file:
         input_data = input_file.read()
