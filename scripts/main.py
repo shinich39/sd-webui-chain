@@ -108,7 +108,6 @@ def click_add_batch_button(batch_id, *args):
     payload["seed_resize_from_h"] = req["seed_resize_from_h"]
 
   payload["to_scale"] = req["resize_tab"] == 1
-
   if payload["to_scale"]:
     payload["scale_by"] = req["resize_scale"] # by
   else:
@@ -506,8 +505,6 @@ def click_generate_btn(queue):
   print(f"Queue: {queue}")
 
   try:
-
-
     for batch_id in queue:
       if not in_progress:
         print(f"Process interrupted.")
