@@ -549,10 +549,10 @@ def click_generate_btn(queue):
         
         input_path = os.path.join(input_dir, filename)
 
-        if not payload["to_scale"] == None:
+        if payload["to_scale"]:
           intput_width, input_height = Image.open(input_path).size
-          payload["width"] = intput_width * payload["scale"]
-          payload["height"] = input_height * payload["scale"]
+          payload["width"] = intput_width * payload["scale_by"]
+          payload["height"] = input_height * payload["scale_by"]
 
         with open(input_path, 'rb') as input_file:
           input_data = input_file.read()
