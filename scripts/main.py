@@ -121,7 +121,6 @@ def click_add_batch_button(batch_id, *args):
   payload["sampler_name"] = req["sampler_name"]
   payload["n_iter"] = req["n_iter"]
   payload["batch_size"] = req["batch_size"]
-  payload["clip_skip"] = shared.opts.CLIP_stop_at_last_layers
   # payload["tiling"] = True
   # payload["restore_faces"] = False
   payload["do_not_save_samples"] = True
@@ -210,7 +209,7 @@ def click_add_batch_button(batch_id, *args):
   payload["override_settings_restore_afterwards"] = True
   payload["override_settings"]['sd_model_checkpoint'] = sd_model_info.name
   payload["override_settings"]["sd_vae"] = modules.sd_vae.get_loaded_vae_name() or "None"
-  # payload["override_settings"]["CLIP_stop_at_last_layers"] = shared.opts.CLIP_stop_at_last_layers
+  payload["override_settings"]["CLIP_stop_at_last_layers"] = shared.opts.CLIP_stop_at_last_layers
   # payload["override_settings"]["sd_model_hash"] = shared.sd_model.sd_model_hash
   # payload["override_settings"]["sd_model_name"] = shared.sd_model.sd_checkpoint_info.name_for_extra
   # payload["override_settings"]["sd_vae_hash"] = modules.sd_vae.get_loaded_vae_hash()
